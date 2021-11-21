@@ -1,5 +1,26 @@
-﻿# Set location for running script
-set-location "C:\Users\Adam\OneDrive\Documents\Scripts\ping_sweep"
+﻿# Load .NET stuff for file/folder dialog
+Add-Type -AssemblyName System.Windows.Forms
+
+Function Get-Folder($initialDirectory) {
+    [void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
+    $FolderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $FolderBrowserDialog.RootFolder = 'MyComputer'
+    if ($initialDirectory) { $FolderBrowserDialog.SelectedPath = $initialDirectory }
+    [void] $FolderBrowserDialog.ShowDialog()
+    return $FolderBrowserDialog.SelectedPath
+}
+
+# Set location for running script. This really just dictates where the log file will be located.
+clear-host
+write-host "Select the working folder for this script. The log file will be stored in this location."
+$folder = Get-Folder("C:\")
+while ($folder -eq "C:\") {
+    write-host "Select the working folder for this script. The log file will be stored in this location."
+    $folder = Get-Folder("C:\")
+}
+write-host "Working folder is " + $folder
+start-sleep(3)
+set-location $folder
 
 ##### Start timer #####
 $start_time = get-date
@@ -25,14 +46,23 @@ $job_sb =
 $todays_date = get-date
 
 # Set log file variable
-$log_file = "C:\Users\Adam\OneDrive\Documents\Scripts\ping_sweep\alive_hosts.log"
+$log_file = $folder + "\alive_hosts.log"
 if (test-path -path $log_file) {
-    remove-item $log_file
+    try {
+        remove-item $log_file
+    } catch {
+        write-host "Error. Cannot remove existing log file. Possible permissions issue."
+    }
 }
-new-item $log_file
+try {
+    new-item $log_file
+} catch {
+    write-host "Error. Cannot create new log file. Possible permissions issue."
+}
 
 
 ##### Get network to scan #####
+clear-host
 $start_ip = Read-Host "Enter starting IP address (e.g. 192.168.0.1)"
 $end_ip = Read-Host "Enter ending IP address (e.g. 192.168.0.254)"
 
@@ -90,6 +120,9 @@ while ($running_job_count -ne 0){
 get-job | receive-job -force -wait
 get-job | remove-job -force
 
+##### Read log file and print output #####
+clear-host
+
 $log_file_data = get-content -path $log_file
 foreach ($line in $log_file_data) {
     write-host $line
@@ -98,4 +131,4 @@ foreach ($line in $log_file_data) {
 ##### End timer #####
 $end_time = get-date
 $execution_time = $end_time - $start_time
-write-host "Script executed in $execution_time"
+write-host "Script executed in (HH:MM:SS:MS) $execution_time"
