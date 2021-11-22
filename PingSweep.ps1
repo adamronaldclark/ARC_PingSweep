@@ -4,10 +4,18 @@ Add-Type -AssemblyName System.Windows.Forms
 Function Get-Folder($initialDirectory) {
     [void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
     $FolderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $FolderBrowserDialog.Description = 'Select the working folder for this script.'
     $FolderBrowserDialog.RootFolder = 'MyComputer'
     if ($initialDirectory) { $FolderBrowserDialog.SelectedPath = $initialDirectory }
-    [void] $FolderBrowserDialog.ShowDialog()
-    return $FolderBrowserDialog.SelectedPath
+    #[void] $FolderBrowserDialog.ShowDialog()
+    $result = $FolderBrowserDialog.ShowDialog((New-Object System.Windows.Forms.Form -Property @{TopMost = $true }))
+    if ($result -eq [Windows.Forms.DialogResult]::OK){
+        return $FolderBrowserDialog.SelectedPath
+    } else {
+        write-host "Error. There is something wrong with the select folder dialog."
+        start-sleep(3)
+        exit
+    }
 }
 
 # Set location for running script. This really just dictates where the log file will be located.
