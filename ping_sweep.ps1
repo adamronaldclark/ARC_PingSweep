@@ -19,11 +19,11 @@ while ($folder -eq "C:\") {
     write-host "Select the working folder for this script. The log file will be stored in this location."
     $folder = Get-Folder("C:\")
 }
-write-host "Working folder is " + $folder
+write-host "Working folder is $folder"
 start-sleep(3)
 set-location $folder
 
-##### Start timer #####
+# Start timer
 $start_time = get-date
 
 $job_sb = 
@@ -127,7 +127,7 @@ while ($next_ip -ne $end_ip_print) {
     }
 
     $next_ip = [string]$start_ip_first_octet + "." + [string]$start_ip_second_octet + "." + [string]$start_ip_third_octet + "." + [string]$start_ip_fourth_octet
-    start-job -scriptblock $job_sb -argumentlist $next_ip, $log_file
+    start-job -scriptblock $job_sb -argumentlist $next_ip, $log_file | out-null
     $start_ip_fourth_octet += 1
 }
 
@@ -141,8 +141,8 @@ while ($running_job_count -ne 0){
 }
 
 # Clean up jobs
-get-job | receive-job -force -wait
-get-job | remove-job -force
+get-job | receive-job -force -wait | out-null
+get-job | remove-job -force | out-null
 
 ##### Read log file and print output #####
 clear-host
