@@ -1,4 +1,4 @@
-﻿# Load .NET stuff for file/folder dialog
+﻿# Load .NET stuff for folder dialog
 Add-Type -AssemblyName System.Windows.Forms
 
 Function Get-Folder($initialDirectory) {
@@ -14,6 +14,7 @@ Function Get-Folder($initialDirectory) {
 clear-host
 write-host "Select the working folder for this script. The log file will be stored in this location."
 $folder = Get-Folder("C:\")
+# Stay in loop until user selects a folder
 while ($folder -eq "C:\") {
     write-host "Select the working folder for this script. The log file will be stored in this location."
     $folder = Get-Folder("C:\")
@@ -34,7 +35,13 @@ $job_sb =
 
     function ping_host($ip) {
         if (test-connection -count 1 -quiet -computername $ip) {
-            add-content -path $log_file $ip
+            try {
+                add-content -path $log_file $ip
+            } catch {
+                write-host "Error. Cannot write to log file. Possible permissions issue."
+                start-sleep(3)
+                exit
+            }
         }
     }
 
@@ -52,19 +59,23 @@ if (test-path -path $log_file) {
         remove-item $log_file
     } catch {
         write-host "Error. Cannot remove existing log file. Possible permissions issue."
+        start-sleep(3)
+        exit
     }
 }
 try {
     new-item $log_file
 } catch {
     write-host "Error. Cannot create new log file. Possible permissions issue."
+    start-sleep(3)
+    exit
 }
 
 
 ##### Get network to scan #####
 clear-host
-$start_ip = Read-Host "Enter starting IP address (e.g. 192.168.0.1)"
-$end_ip = Read-Host "Enter ending IP address (e.g. 192.168.0.254)"
+$start_ip = read-host "Enter starting IP address (e.g. 192.168.0.1)"
+$end_ip = read-host "Enter ending IP address (e.g. 192.168.0.254)"
 
 ##### Store addresses for printing #####
 $start_ip_print = $start_ip
@@ -84,14 +95,27 @@ $end_ip_second_octet = [int]$end_ip[1]
 $end_ip_third_octet = [int]$end_ip[2]
 $end_ip_fourth_octet = [int]$end_ip[3]
 
-##### TO DO - Input validation #####
-# Regex to test IP format
-# Make sure starting IP is lower than ending IP
-##### TO DO - Input validation #####
+##### Validate starting and ending IP addresses #####
+$ipv4_pattern = "([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])){3}"
+if ($start_ip_print -notmatch $ipv4_pattern) {
+    write-host "Error. Starting IP address not valid."
+    start-sleep(3)
+    exit
+} elseif ($end_ip_print -notmatch $ipv4_pattern) {
+    write-host "Error. Ending IP address not valid."
+    start-sleep(3)
+    exit
+}
 
 ##### Scan #####
 $next_ip = [string]$start_ip_first_octet + "." + [string]$start_ip_second_octet + "." + [string]$start_ip_third_octet + "." + [string]$start_ip_fourth_octet
-add-content -path $log_file "Alive hosts as of: $todays_date"
+try {
+    add-content -path $log_file "Alive hosts as of: $todays_date"
+} catch {
+    write-host "Error. Cannot write to log file. Possible permissions issue."
+    start-sleep(3)
+    exit
+}
 while ($next_ip -ne $end_ip_print) {
     # Check to ensure all jobs have completed before cleaning up
     $running_job_count = (get-job | where state -eq running).count
@@ -123,7 +147,13 @@ get-job | remove-job -force
 ##### Read log file and print output #####
 clear-host
 
-$log_file_data = get-content -path $log_file
+try {
+    $log_file_data = get-content -path $log_file
+} catch {
+    write-host "Error. Cannot read log file. Possible permissions issue."
+    start-sleep(3)
+    exit
+}
 foreach ($line in $log_file_data) {
     write-host $line
 }
@@ -131,4 +161,4 @@ foreach ($line in $log_file_data) {
 ##### End timer #####
 $end_time = get-date
 $execution_time = $end_time - $start_time
-write-host "Script executed in (HH:MM:SS:MS) $execution_time"
+write-host "Script executed in $execution_time (HH:MM:SS:MS)"
